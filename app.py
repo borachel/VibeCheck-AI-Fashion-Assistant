@@ -53,19 +53,26 @@ def analyze_user_all_in_one(uploaded_file, gender, occasion):
 
 def run_virtual_tryon(person_img_path, garment_img_url):
     try:
-        client = Client("yisol/IDM-VTON")
+        # Tăng timeout lên 300 giây để tránh lỗi ngắt kết nối sớm
+        client = Client("yisol/IDM-VTON", timeout=300) 
+        
         result = client.predict(
-            dict={"background": handle_file(person_img_path), "layers": [], "composite": None},
+            dict={
+                "background": handle_file(person_img_path),
+                "layers": [],
+                "composite": None
+            },
             garm_img=handle_file(garment_img_url),
-            garment_des="Fashion product",
+            garment_des="Fashionable garment",
             is_checked=True,
             is_checked_crop=False,
-            denoise_steps=30,
+            denoise_steps=30, # Có thể giảm xuống 20 để chạy nhanh hơn nhưng chất lượng giảm xíu
             seed=42,
             api_name="/process"
         )
         return result[0]
-    except Exception:
+    except Exception as e:
+        print(f"Lỗi kết nối: {e}")
         return None
 
 # --- GIAO DIỆN ---

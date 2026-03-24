@@ -20,7 +20,7 @@ def get_recommendations(gender, style, occasion, body_shape):
     cursor = conn.cursor()
     # Truy vấn lấy thêm trường Price
     query = """
-        SELECT name, price, image_url, id, category FROM products 
+        SELECT name, price, image_url, id FROM products 
         WHERE gender = ? AND style = ? AND occasion = ?
         AND (body_shape = ? OR body_shape = 'All')
     """

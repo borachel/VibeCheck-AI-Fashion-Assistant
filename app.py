@@ -103,7 +103,7 @@ if user_img:
                     st.image(item[2], width=120) # image_url
                 with col_info:
                     st.write(f"**{item[0]}**") # name
-                    st.write(f"Giá: {item[1]:,.0f} VNĐ") # price
+                    st.write(f"Giá: {item[1]} VNĐ") # price
                     if st.button(f"Thử mẫu này", key=f"btn_{item[3]}"):
                         st.session_state['tryon_item'] = item
                         st.session_state['tryon_status'] = 'processing'

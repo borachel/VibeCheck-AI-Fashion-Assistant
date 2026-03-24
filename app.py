@@ -7,9 +7,9 @@ from gradio_client import Client, handle_file
 import tempfile
 
 # --- CẤU HÌNH ---
-GENAI_API_KEY = "YOUR_GEMINI_API_KEY"
+GENAI_API_KEY = "AIzaSyCzR38Z-XHCt3sdERv8TapXIRBuLYoig4Y"
 genai.configure(api_key=GENAI_API_KEY)
-gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+gemini_model = genai.GenerativeModel('gemini-2.5-flash')
 
 st.set_page_config(page_title="AI Stylist MVP", layout="centered")
 

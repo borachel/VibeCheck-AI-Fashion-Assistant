@@ -7,7 +7,7 @@ from gradio_client import Client, handle_file
 import tempfile
 
 # --- CẤU HÌNH ---
-GENAI_API_KEY = "AIzaSyCzR38Z-XHCt3sdERv8TapXIRBuLYoig4Y"
+GENAI_API_KEY = "My key here"
 genai.configure(api_key=GENAI_API_KEY)
 gemini_model = genai.GenerativeModel('gemini-2.5-flash')
 

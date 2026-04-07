@@ -3,9 +3,6 @@ import sqlite3
 import google.generativeai as genai
 from PIL import Image
 import json
-import base64
-import vertexai
-from vertexai.preview.vision_models import Image, ImageGenerationModel
 
 # --- CẤU HÌNH ---
 GENAI_API_KEY = "My key here"
@@ -52,31 +49,40 @@ def analyze_user_all_in_one(uploaded_file, gender, occasion):
     clean_json = response.text.replace("```json", "").replace("```", "").strip()
     return json.loads(clean_json)
 
-# Khởi tạo project Google CLoud
-vertexai.init(project="project-a8e13965-257b-422e-afa", location="us-central1")
+import os
+from google import genai
+from google.genai.types import RecontextImageSource, ProductImage, Image
 
-def run_google_vto(person_img_path, garment_img_path):
+# 1. Cấu hình:
+os.environ["GOOGLE_CLOUD_PROJECT"] = "project-a8e13965-257b-422e-afa"
+os.environ["GOOGLE_CLOUD_LOCATION"] = "us-central1"
+os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
+
+def run_google_vto_2026(person_img_path, garment_img_path):
     try:
-        model = ImageGenerationModel.from_pretrained("imagen-3-vto") # Phiên bản mới nhất 2026
-        
-        # Load ảnh
-        person_img = Image.load_from_file(person_img_path)
-        garment_img = Image.load_from_file(garment_img_path)
+        # Khởi tạo Client theo chuẩn mới
+        client = genai.Client()
+        output_file = "vto_result_2026.png"
 
-        # Thực hiện thử đồ ảo
-        # Google VTO 2026 tự nhận diện loại đồ (Áo/Quần) rất thông minh
-        response = model.edit_image(
-            base_image=person_img,
-            reference_image=garment_img,
-            number_of_images=1
+        # Gọi mô hình virtual-try-on-001
+        response = client.models.recontext_image(
+            model="virtual-try-on-001",
+            source=RecontextImageSource(
+                # Ảnh người dùng (từ file tạm)
+                person_image=Image.from_file(location=person_img_path),
+                product_images=[
+                    # Ảnh sản phẩm (từ link hoặc file trong database)
+                    ProductImage(product_image=Image.from_file(location=garment_img_path))
+                ],
+            ),
         )
-        
-        # Lưu kết quả
-        output_file = "vto_output.png"
-        response[0].save(location=output_file)
+
+        # Lưu ảnh kết quả
+        response.generated_images[0].image.save(output_file)
         return output_file
+
     except Exception as e:
-        st.error(f"Lỗi Google VTO: {e}")
+        print(f"Lỗi VTO 2026: {e}")
         return None
 
 # --- GIAO DIỆN ---

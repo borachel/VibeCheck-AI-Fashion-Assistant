@@ -3,8 +3,9 @@ import sqlite3
 import google.generativeai as genai
 from PIL import Image
 import json
-from gradio_client import Client, handle_file
-import tempfile
+import base64
+import vertexai
+from vertexai.preview.vision_models import Image, ImageGenerationModel
 
 # --- CẤU HÌNH ---
 GENAI_API_KEY = "My key here"
@@ -51,28 +52,31 @@ def analyze_user_all_in_one(uploaded_file, gender, occasion):
     clean_json = response.text.replace("```json", "").replace("```", "").strip()
     return json.loads(clean_json)
 
-def run_virtual_tryon(person_img_path, garment_img_url):
+# Khởi tạo project Google CLoud
+vertexai.init(project="project-a8e13965-257b-422e-afa", location="us-central1")
+
+def run_google_vto(person_img_path, garment_img_path):
     try:
-        # Tăng timeout lên 300 giây để tránh lỗi ngắt kết nối sớm
-        client = Client("yisol/IDM-VTON", timeout=300) 
+        model = ImageGenerationModel.from_pretrained("imagen-3-vto") # Phiên bản mới nhất 2026
         
-        result = client.predict(
-            dict={
-                "background": handle_file(person_img_path),
-                "layers": [],
-                "composite": None
-            },
-            garm_img=handle_file(garment_img_url),
-            garment_des="Fashionable garment",
-            is_checked=True,
-            is_checked_crop=False,
-            denoise_steps=30, # Có thể giảm xuống 20 để chạy nhanh hơn nhưng chất lượng giảm xíu
-            seed=42,
-            api_name="/process"
+        # Load ảnh
+        person_img = Image.load_from_file(person_img_path)
+        garment_img = Image.load_from_file(garment_img_path)
+
+        # Thực hiện thử đồ ảo
+        # Google VTO 2026 tự nhận diện loại đồ (Áo/Quần) rất thông minh
+        response = model.edit_image(
+            base_image=person_img,
+            reference_image=garment_img,
+            number_of_images=1
         )
-        return result[0]
+        
+        # Lưu kết quả
+        output_file = "vto_output.png"
+        response[0].save(location=output_file)
+        return output_file
     except Exception as e:
-        print(f"Lỗi kết nối: {e}")
+        st.error(f"Lỗi Google VTO: {e}")
         return None
 
 # --- GIAO DIỆN ---

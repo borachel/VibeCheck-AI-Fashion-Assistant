@@ -136,18 +136,24 @@ if user_img:
         st.info(f"Dáng người: **{ans['body_shape']}** \n\n {ans['reason']}")
 
         # Hiển thị sản phẩm: Name, Price, Image
+        # Hiển thị sản phẩm gợi ý
         if st.session_state.get('product_recs'):
             st.divider()
             st.subheader("👕 Sản phẩm gợi ý dành cho bạn")
+
             for item in st.session_state['product_recs']:
-                name, price, image_url, item_id = item
-                col1, col2 = st.columns([1, 2])
+                name, price, image_url, item_id = item   # Giải nén rõ ràng
+                
+                col1, col2 = st.columns([1, 2])          # Đổi tên biến cho rõ
+                
                 with col1:
                     st.image(image_url, width=140)
-                with col_info:
+                
+                with col2:
                     st.write(f"**{name}**")
                     st.write(f"**Giá:** {price} VNĐ")
-                    if st.button(f"Thử mẫu này→", key=f"try_{item_id}"):
+                    
+                    if st.button("🪞 Thử đồ ảo", key=f"try_{item_id}"):
                         st.session_state['tryon_item'] = item
                         st.session_state['tryon_status'] = 'processing'
                         st.rerun()

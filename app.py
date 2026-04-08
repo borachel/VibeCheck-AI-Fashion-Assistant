@@ -72,6 +72,18 @@ Trả về **chính xác** định dạng JSON sau, không thêm bất kỳ text
         st.error(f"Lỗi khi phân tích ảnh: {e}")
         return None
 
+import google.auth
+from google import genai
+
+try:
+    credentials, project = google.auth.default()
+    print(f"✅ Project: {project}")
+    print(f"✅ Credentials: {type(credentials)}")
+    
+    client = genai.Client()
+    print("✅ Client khởi tạo thành công")
+except Exception as e:
+    print(f"❌ Lỗi Authentication: {e}")
 def run_vertex_vto(person_img_path: str, garment_img_path: str):
     """Virtual Try-On sử dụng Vertex AI virtual-try-on-001"""
     try:
@@ -153,7 +165,7 @@ if user_img:
                     st.write(f"**{name}**")
                     st.write(f"**Giá:** {price} VNĐ")
                     
-                    if st.button("🪞 Thử đồ ảo", key=f"try_{item_id}"):
+                    if st.button("🪞 Thử sản phẩm", key=f"try_{item_id}"):
                         st.session_state['tryon_item'] = item
                         st.session_state['tryon_status'] = 'processing'
                         st.rerun()
@@ -165,7 +177,7 @@ if 'tryon_item' in st.session_state:
     st.subheader(f"🪞 Phòng thử đồ: {item[0]}")
 
     if st.session_state.get('tryon_status') == 'processing':
-        with st.spinner("Đang xử lý thử đồ ảo bằng Vertex AI (có thể mất 10–20 giây)..."):
+        with st.spinner("Đang xử lý thử sản phẩm ảo (có thể mất 10–20 giây)..."):
             # Lưu ảnh người dùng vào file tạm
             with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                 tmp.write(user_img.getvalue())
@@ -196,7 +208,7 @@ if 'tryon_item' in st.session_state:
 
     # Thành công
     if st.session_state.get('tryon_status') == 'success':
-        st.image(st.session_state['tryon_result'], use_column_width=True, caption="Kết quả thử đồ ảo")
+        st.image(st.session_state['tryon_result'], use_column_width=True, caption="Kết quả thử sản phẩm")
         st.success("Bạn thấy bộ này thế nào?")
 
         col1, col2 = st.columns(2)

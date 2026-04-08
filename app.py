@@ -6,24 +6,25 @@ import requests
 import json
 
 from PIL import Image
-import google.generativeai as genai
-from google import genai as genai_vertex 
+import google.generativeai as genai 
+
+# ================== Google GenAI SDK cho Virtual Try-On (Vertex AI) ==================
+from google import genai as genai_vertex        
 from google.genai.types import (
-    RecontextImageSource, 
-    ProductImage, 
+    RecontextImageSource,
+    ProductImage,
     Image as GenaiImage
 )
 
 # --- CẤU HÌNH ---
-GENAI_API_KEY = st.secrets.get("GENAI_API_KEY") 
-genai.configure(api_key=GENAI_API_KEY)
-gemini_model = genai.GenerativeModel('gemini-2.5-flash')
-
-st.set_page_config(page_title="VibeCheck: AI Stylist", layout="centered")
-
+GENAI_API_KEY = st.secrets.get("GENAI_API_KEY")
 os.environ["GOOGLE_CLOUD_PROJECT"] = "project-a8e13965-257b-422e-afa"
 os.environ["GOOGLE_CLOUD_LOCATION"] = "us-central1"
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
+
+genai.configure(api_key=GENAI_API_KEY) 
+
+st.set_page_config(page_title="VibeCheck: AI Stylist", layout="centered")
 
 # --- HÀM XỬ LÝ ---
 
@@ -81,13 +82,11 @@ Trả về **chính xác** định dạng JSON sau, không thêm bất kỳ text
         return None
 
 def run_vertex_vto(person_img_path: str, garment_img_path: str):
-    """Virtual Try-On sử dụng Vertex AI virtual-try-on-001"""
     try:
-        # Khởi tạo client cho Vertex AI
-        client = genai.Client(
+        client = genai_vertex.Client(
             vertexai=True,
             project=os.getenv("GOOGLE_CLOUD_PROJECT"),
-            location=os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+            location=os.getenv("GOOGLE_CLOUD_LOCATION")
         )
 
         response = client.models.recontext_image(
@@ -95,9 +94,7 @@ def run_vertex_vto(person_img_path: str, garment_img_path: str):
             source=RecontextImageSource(
                 person_image=GenaiImage.from_file(location=person_img_path),
                 product_images=[
-                    ProductImage(
-                        product_image=GenaiImage.from_file(location=garment_img_path)
-                    )
+                    ProductImage(product_image=GenaiImage.from_file(location=garment_img_path))
                 ]
             )
         )
@@ -107,10 +104,9 @@ def run_vertex_vto(person_img_path: str, garment_img_path: str):
         return output_file
 
     except Exception as e:
-        st.error(f"Lỗi khi gọi Vertex AI Virtual Try-On: {str(e)}")
-        print(f"Chi tiết lỗi: {e}")   # Để debug trong terminal
+        st.error(f"Lỗi Vertex AI VTO: {str(e)}")
+        print(f"Debug lỗi: {e}")
         return None
-
 # --- GIAO DIỆN ---
 
 st.title("👗 VibeCheck: Scan your style, find your fit")

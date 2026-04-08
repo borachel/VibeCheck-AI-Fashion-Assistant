@@ -1,10 +1,18 @@
 import streamlit as st
 import sqlite3
-import google.generativeai as genai
-from PIL import Image
-import json
 import os
 import tempfile
+import requests
+import json
+
+from PIL import Image
+import google.generativeai as genai
+from google import genai as genai_vertex 
+from google.genai.types import (
+    RecontextImageSource, 
+    ProductImage, 
+    Image as GenaiImage
+)
 
 # --- CẤU HÌNH ---
 GENAI_API_KEY = st.secrets.get("GENAI_API_KEY") 
@@ -72,29 +80,15 @@ Trả về **chính xác** định dạng JSON sau, không thêm bất kỳ text
         st.error(f"Lỗi khi phân tích ảnh: {e}")
         return None
 
-import google.auth
-from google import genai
-
-try:
-    credentials, project = google.auth.default()
-    print(f"✅ Project: {project}")
-    print(f"✅ Credentials: {type(credentials)}")
-    
-    client = genai.Client()
-    print("✅ Client khởi tạo thành công")
-except Exception as e:
-    print(f"❌ Lỗi Authentication: {e}")
 def run_vertex_vto(person_img_path: str, garment_img_path: str):
     """Virtual Try-On sử dụng Vertex AI virtual-try-on-001"""
     try:
-        from google import genai
-        from google.genai.types import (
-            RecontextImageSource, 
-            ProductImage, 
-            Image as GenaiImage
+        # Khởi tạo client cho Vertex AI
+        client = genai.Client(
+            vertexai=True,
+            project=os.getenv("GOOGLE_CLOUD_PROJECT"),
+            location=os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
         )
-
-        client = genai.Client()
 
         response = client.models.recontext_image(
             model="virtual-try-on-001",
@@ -104,8 +98,8 @@ def run_vertex_vto(person_img_path: str, garment_img_path: str):
                     ProductImage(
                         product_image=GenaiImage.from_file(location=garment_img_path)
                     )
-                ],
-            ),
+                ]
+            )
         )
 
         output_file = "vto_result.png"
@@ -113,7 +107,8 @@ def run_vertex_vto(person_img_path: str, garment_img_path: str):
         return output_file
 
     except Exception as e:
-        st.error(f"Lỗi Vertex AI Virtual Try-On: {str(e)}")
+        st.error(f"Lỗi khi gọi Vertex AI Virtual Try-On: {str(e)}")
+        print(f"Chi tiết lỗi: {e}")   # Để debug trong terminal
         return None
 
 # --- GIAO DIỆN ---

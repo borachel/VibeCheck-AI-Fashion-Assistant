@@ -4,12 +4,8 @@ import os
 import tempfile
 import requests
 import json
-
 from PIL import Image
-import google.generativeai as genai 
-
-# ================== Google GenAI SDK cho Virtual Try-On (Vertex AI) ==================
-from google import genai as genai_vertex        
+from google import genai
 from google.genai.types import (
     RecontextImageSource,
     ProductImage,
@@ -17,12 +13,14 @@ from google.genai.types import (
 )
 
 # --- CẤU HÌNH ---
-os.environ["GOOGLE_CLOUD_PROJECT"] = "project-a8e13965-257b-422e-afa"
-os.environ["GOOGLE_CLOUD_LOCATION"] = "us-central1"
-os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
-
+# 1. Khởi tạo Client cho Gemini (AI Studio)
 GENAI_API_KEY = st.secrets.get("GENAI_API_KEY")
-genai.configure(api_key=GENAI_API_KEY) 
+client_ai = genai.Client(api_key=GENAI_API_KEY)
+
+# 2. Khởi tạo Client cho Vertex AI (Virtual Try-On)
+PROJECT_ID = "project-a8e13965-257b-422e-afa"
+LOCATION = "us-central1"
+client_vertex = genai.Client(vertexai=True, project=PROJECT_ID, location=LOCATION)
 
 st.set_page_config(page_title="VibeCheck: AI Stylist", layout="centered")
 
@@ -33,7 +31,6 @@ def get_recommendations(gender: str, style: str, occasion: str, body_shape: str)
     try:
         conn = sqlite3.connect('fashion_store.db')
         cursor = conn.cursor()
-        
         query = """
             SELECT name, price, image_url, id 
             FROM products
@@ -52,29 +49,23 @@ def get_recommendations(gender: str, style: str, occasion: str, body_shape: str)
         return []
 
 def analyze_user_all_in_one(uploaded_file, gender: str, occasion: str):
-    """Phân tích ảnh bằng Gemini 2.5 Flash - trả về JSON ổn định"""
+    """Phân tích ảnh bằng Gemini 1.5 Flash (Sử dụng SDK mới)"""
     img = Image.open(uploaded_file)
     
     prompt = f"""Bạn là chuyên gia tư vấn thời trang cao cấp.
-Phân tích ảnh người (giới tính: {gender}) phù hợp với dịp: {occasion}.
-
-Chỉ được chọn giá trị trong danh sách sau:
-- Body Shape: Hourglass, Triangle, Inverted Triangle, Rectangle, Ovals
-- Style: Minimalism, Y2K, Sporty, Vintage, Elegant
-
-Trả về **chính xác** định dạng JSON sau, không thêm bất kỳ text nào khác:
-
-{{
-  "body_shape": "Tên shape",
-  "suggested_style": "Tên style",
-  "reason": "Giải thích ngắn gọn bằng tiếng Việt (1-2 câu)"
-}}
-"""
+    Phân tích ảnh người (giới tính: {gender}) phù hợp với dịp: {occasion}.
+    Chỉ được chọn giá trị trong danh sách sau:
+    - Body Shape: Hourglass, Triangle, Inverted Triangle, Rectangle, Ovals
+    - Style: Minimalism, Y2K, Sporty, Vintage, Elegant
+    Trả về chính xác định dạng JSON:
+    {{ "body_shape": "Tên shape", "suggested_style": "Tên style", "reason": "Giải thích ngắn gọn" }}"""
 
     try:
-        response = gemini_model.generate_content(
-            [prompt, img],
-            generation_config={"response_mime_type": "application/json"}
+        # Cách gọi model mới của SDK google-genai
+        response = client_ai.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=[prompt, img],
+            config={"response_mime_type": "application/json"}
         )
         return json.loads(response.text.strip())
     except Exception as e:
@@ -82,14 +73,9 @@ Trả về **chính xác** định dạng JSON sau, không thêm bất kỳ text
         return None
 
 def run_vertex_vto(person_img_path: str, garment_img_path: str):
+    """Virtual Try-On sử dụng Vertex AI"""
     try:
-        client = genai_vertex.Client(
-            vertexai=True,
-            project=os.getenv("GOOGLE_CLOUD_PROJECT"),
-            location=os.getenv("GOOGLE_CLOUD_LOCATION")
-        )
-
-        response = client.models.recontext_image(
+        response = client_vertex.models.recontext_image(
             model="virtual-try-on-001",
             source=RecontextImageSource(
                 person_image=GenaiImage.from_file(location=person_img_path),
@@ -98,20 +84,16 @@ def run_vertex_vto(person_img_path: str, garment_img_path: str):
                 ]
             )
         )
-
         output_file = "vto_result.png"
         response.generated_images[0].image.save(output_file)
         return output_file
-
     except Exception as e:
         st.error(f"Lỗi Vertex AI VTO: {str(e)}")
-        print(f"Debug lỗi: {e}")
         return None
-# --- GIAO DIỆN ---
 
+# --- GIAO DIỆN ---
 st.title("👗 VibeCheck: Scan your style, find your fit")
 
-# Sidebar: 
 with st.sidebar:
     st.header("Thông tin của bạn")
     gender = st.radio("Giới tính", ["Nam", "Nữ"], horizontal=True)
@@ -120,103 +102,65 @@ with st.sidebar:
 
 if user_img:
     if st.button("✨ Phân tích & Gợi ý phong cách", type="primary"):
-        with st.spinner("AI đang phân tích vóc dáng và phong cách phù hợp..."):
+        with st.spinner("AI đang phân tích vóc dáng..."):
             analysis = analyze_user_all_in_one(user_img, gender, occasion_pref)
-            
             if analysis:
                 st.session_state['analysis'] = analysis
                 st.session_state['product_recs'] = get_recommendations(
-                    gender, 
-                    analysis['suggested_style'], 
-                    occasion_pref, 
-                    analysis['body_shape']
+                    gender, analysis['suggested_style'], occasion_pref, analysis['body_shape']
                 )
                 st.rerun()
-# Hiển thị kết quả phân tích
+
     if 'analysis' in st.session_state:
         ans = st.session_state['analysis']
         st.success(f"Phong cách gợi ý: **{ans['suggested_style']}**")
         st.info(f"Dáng người: **{ans['body_shape']}** \n\n {ans['reason']}")
 
-        # Hiển thị sản phẩm: Name, Price, Image
-        # Hiển thị sản phẩm gợi ý
         if st.session_state.get('product_recs'):
             st.divider()
             st.subheader("👕 Sản phẩm gợi ý dành cho bạn")
-
             for item in st.session_state['product_recs']:
-                name, price, image_url, item_id = item   # Giải nén rõ ràng
-                
-                col1, col2 = st.columns([1, 2])          # Đổi tên biến cho rõ
-                
+                name, price, image_url, item_id = item
+                col1, col2 = st.columns([1, 2])
                 with col1:
                     st.image(image_url, width=140)
-                
                 with col2:
                     st.write(f"**{name}**")
                     st.write(f"**Giá:** {price} VNĐ")
-                    
                     if st.button("🪞 Thử sản phẩm", key=f"try_{item_id}"):
                         st.session_state['tryon_item'] = item
                         st.session_state['tryon_status'] = 'processing'
                         st.rerun()
 
-# 3. KHU VỰC THỬ ĐỒ ẢO (Xử lý Case Success/Error)
-if 'tryon_item' in st.session_state:
+# Xử lý Thử đồ ảo
+if 'tryon_item' in st.session_state and st.session_state.get('tryon_status') == 'processing':
     item = st.session_state['tryon_item']
-    st.divider()
-    st.subheader(f"🪞 Phòng thử đồ: {item[0]}")
+    with st.spinner("Đang xử lý thử đồ ảo..."):
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_p:
+            tmp_p.write(user_img.getvalue())
+            person_path = tmp_p.name
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_g:
+            resp = requests.get(item[2])
+            tmp_g.write(resp.content)
+            garment_path = tmp_g.name
 
-    if st.session_state.get('tryon_status') == 'processing':
-        with st.spinner("Đang xử lý thử sản phẩm ảo (có thể mất 10–20 giây)..."):
-            # Lưu ảnh người dùng vào file tạm
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-                tmp.write(user_img.getvalue())
-                person_path = tmp.name
+        result_path = run_vertex_vto(person_path, garment_path)
+        
+        # Xóa file tạm ngay sau khi dùng
+        os.unlink(person_path)
+        os.unlink(garment_path)
 
-            # Lưu ảnh sản phẩm từ URL (hoặc từ DB)
-            garment_url = item[2]
-            # Nếu garment_url là link online, cần tải về trước
-            import requests
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_garment:
-                response = requests.get(garment_url)
-                tmp_garment.write(response.content)
-                garment_path = tmp_garment.name
+        if result_path:
+            st.session_state['tryon_result'] = result_path
+            st.session_state['tryon_status'] = 'success'
+        else:
+            st.session_state['tryon_status'] = 'error'
+        st.rerun()
 
-            result_path = run_vertex_vto(person_path, garment_path)
-
-            # Cleanup file tạm
-            for path in [person_path, garment_path]:
-                if os.path.exists(path):
-                    os.unlink(path)
-
-            if result_path and os.path.exists(result_path):
-                st.session_state['tryon_result'] = result_path
-                st.session_state['tryon_status'] = 'success'
-            else:
-                st.session_state['tryon_status'] = 'error'
-            st.rerun()
-
-    # Thành công
-    if st.session_state.get('tryon_status') == 'success':
-        st.image(st.session_state['tryon_result'], use_column_width=True, caption="Kết quả thử sản phẩm")
-        st.success("Bạn thấy bộ này thế nào?")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🛒 Thêm vào giỏ hàng"):
-                st.toast(f"Đã thêm **{item[0]}** vào giỏ hàng!", icon="✅")
-        with col2:
-            if st.button("Thử sản phẩm khác"):
-                if 'tryon_item' in st.session_state:
-                    del st.session_state['tryon_item']
-                if 'tryon_status' in st.session_state:
-                    del st.session_state['tryon_status']
-                st.rerun()
-
-    # Lỗi
-    if st.session_state.get('tryon_status') == 'error':
-        st.error("Không thể tạo hình thử đồ. Hệ thống có thể đang quá tải quota hoặc lỗi tạm thời.")
-        if st.button("🔄 Thử lại"):
-            st.session_state['tryon_status'] = 'processing'
-            st.rerun()
+if st.session_state.get('tryon_status') == 'success':
+    st.image(st.session_state['tryon_result'], use_container_width=True)
+    if st.button("Thử sản phẩm khác"):
+        del st.session_state['tryon_item']
+        del st.session_state['tryon_status']
+        st.rerun()

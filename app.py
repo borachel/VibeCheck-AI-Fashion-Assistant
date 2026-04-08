@@ -3,9 +3,11 @@ import sqlite3
 import google.generativeai as genai
 from PIL import Image
 import json
+import os
+import tempfile
 
 # --- CẤU HÌNH ---
-GENAI_API_KEY = "My key here"
+GENAI_API_KEY = st.secrets.get("GENAI_API_KEY") 
 genai.configure(api_key=GENAI_API_KEY)
 gemini_model = genai.GenerativeModel('gemini-2.5-flash')
 

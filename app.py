@@ -17,11 +17,11 @@ from google.genai.types import (
 )
 
 # --- CẤU HÌNH ---
-GENAI_API_KEY = st.secrets.get("GENAI_API_KEY")
 os.environ["GOOGLE_CLOUD_PROJECT"] = "project-a8e13965-257b-422e-afa"
 os.environ["GOOGLE_CLOUD_LOCATION"] = "us-central1"
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 
+GENAI_API_KEY = st.secrets.get("GENAI_API_KEY")
 genai.configure(api_key=GENAI_API_KEY) 
 
 st.set_page_config(page_title="VibeCheck: AI Stylist", layout="centered")

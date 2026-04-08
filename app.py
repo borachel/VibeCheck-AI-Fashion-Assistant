@@ -72,8 +72,9 @@ def analyze_user_all_in_one(uploaded_file, gender: str, occasion: str):
         return None
 
 def run_vertex_vto(person_img_path: str, garment_img_path: str):
-    """Virtual Try-On sử dụng Vertex AI"""
     try:
+        st.info("Đang gọi Vertex AI Virtual Try-On...")  
+        
         response = client_vertex.models.recontext_image(
             model="virtual-try-on-001",
             source=RecontextImageSource(
@@ -83,11 +84,19 @@ def run_vertex_vto(person_img_path: str, garment_img_path: str):
                 ]
             )
         )
+        
         output_file = "vto_result.png"
         response.generated_images[0].image.save(output_file)
+        st.success("Đã tạo ảnh thử đồ thành công!")
         return output_file
+        
     except Exception as e:
-        st.error(f"Lỗi Vertex AI VTO: {str(e)}")
+        error_msg = str(e)
+        st.error(f"Lỗi Vertex AI VTO: {error_msg}")
+        print("=== FULL ERROR ===")   # Hiện trong terminal
+        print(error_msg)
+        import traceback
+        traceback.print_exc()
         return None
 
 # --- GIAO DIỆN ---

@@ -49,7 +49,6 @@ def get_recommendations(gender: str, style: str, occasion: str, body_shape: str)
         return []
 
 def analyze_user_all_in_one(uploaded_file, gender: str, occasion: str):
-    """Phân tích ảnh bằng Gemini 1.5 Flash (Sử dụng SDK mới)"""
     img = Image.open(uploaded_file)
     
     prompt = f"""Bạn là chuyên gia tư vấn thời trang cao cấp.
@@ -63,7 +62,7 @@ def analyze_user_all_in_one(uploaded_file, gender: str, occasion: str):
     try:
         # Cách gọi model mới của SDK google-genai
         response = client_ai.models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash",
             contents=[prompt, img],
             config={"response_mime_type": "application/json"}
         )

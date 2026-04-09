@@ -23,18 +23,51 @@ st.set_page_config(page_title="VibeCheck: AI Stylist", layout="centered")
 
 # ====================== HÀM ======================
 def get_recommendations(gender, style, occasion, body_shape):
+    """Query linh hoạt hơn, ưu tiên style rồi mới đến occasion"""
     try:
         conn = sqlite3.connect('fashion_store.db')
         cursor = conn.cursor()
+
+        # Query 1: Ưu tiên khớp cả style và occasion
         query = """
             SELECT name, price, image_url, id 
             FROM products
-            WHERE gender = ? AND style = ? AND occasion = ?
+            WHERE gender = ?
+              AND (style = ? OR style = 'All')
+              AND (occasion = ? OR occasion = 'All')
               AND (body_shape = ? OR body_shape = 'All')
+            ORDER BY 
+                CASE WHEN style = ? THEN 1 ELSE 2 END,
+                CASE WHEN occasion = ? THEN 1 ELSE 2 END
             LIMIT 8
         """
-        cursor.execute(query, (gender, style, occasion, body_shape))
-        return cursor.fetchall()
+        cursor.execute(query, (gender, style, occasion, body_shape, style, occasion))
+        results = cursor.fetchall()
+
+        # Query 2: Nếu không có kết quả, nới lỏng (chỉ giữ gender + style)
+        if not results:
+            cursor.execute("""
+                SELECT name, price, image_url, id 
+                FROM products
+                WHERE gender = ?
+                  AND (style = ? OR style = 'All')
+                LIMIT 8
+            """, (gender, style))
+            results = cursor.fetchall()
+
+        # Query 3: Fallback cuối cùng (chỉ theo gender)
+        if not results:
+            cursor.execute("""
+                SELECT name, price, image_url, id 
+                FROM products
+                WHERE gender = ?
+                LIMIT 8
+            """, (gender,))
+            results = cursor.fetchall()
+
+        conn.close()
+        return results
+
     except Exception as e:
         st.error(f"Lỗi database: {e}")
         return []

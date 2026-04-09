@@ -66,28 +66,35 @@ Trả về JSON: {{"body_shape": "...", "suggested_style": "...", "reason": "...
 
 
 def run_cat_vton(person_img_path: str, garment_img_url: str):
-    """Chạy CAT-VTON trên Fal.ai"""
+    """Chạy CAT-VTON trên Fal.ai với debug tốt hơn"""
     try:
         client = fal_client.SyncClient(api_key=FAL_API_KEY)
+        
+        st.info("Đang gửi yêu cầu đến CAT-VTON...")  # ← Thêm dòng này để theo dõi
         
         result = client.subscribe(
             "fal-ai/cat-vton",
             arguments={
-                "human_image_url": person_img_path,   # fal sẽ tự xử lý local file
+                "human_image_url": person_img_path,   # fal-client sẽ tự upload nếu là local path
                 "garment_image_url": garment_img_url,
-                "cloth_type": "upper",              
+                "cloth_type": "upper",                # đổi thành "lower" nếu thử quần/váy
                 "num_inference_steps": 25,
                 "guidance_scale": 7.0,
             },
             with_logs=True
         )
         
-        return result["images"][0]["url"] if "images" in result else result
+        if "images" in result and len(result["images"]) > 0:
+            return result["images"][0]["url"]
+        else:
+            st.error(f"Kết quả không đúng định dạng: {result}")
+            return None
 
     except Exception as e:
         st.error(f"Lỗi CAT-VTON: {str(e)}")
+        print("=== DEBUG ERROR CAT-VTON ===")
+        print(str(e))
         return None
-
 
 # ====================== GIAO DIỆN ======================
 st.title("👗 VibeCheck: Scan your style, find your fit")

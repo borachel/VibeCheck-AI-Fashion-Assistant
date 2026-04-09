@@ -132,7 +132,7 @@ if 'tryon_item' in st.session_state:
     # 1. Logic xử lý khi đang trong trạng thái 'processing'
     if st.session_state.get('tryon_status') == 'processing':
         st.subheader(f"🪞 Đang xử lý thử đồ: {item[0]}")
-        with st.spinner("Đang "mặc thử" sản phẩm (10–20 giây)..."):
+        with st.spinner("Đang mặc thử sản phẩm (10–20 giây)..."):
             try:
                 # Tạo file tạm cho ảnh người dùng
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:

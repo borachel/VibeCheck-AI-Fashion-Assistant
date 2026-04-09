@@ -63,23 +63,31 @@ Trả về JSON: {{"body_shape": "...", "suggested_style": "...", "reason": "...
 def run_cat_vton(person_local_path: str, garment_url: str):
     try:
         client = fal_client.SyncClient(api_key=FAL_API_KEY)
+        
+        # 1. Upload ảnh người dùng lên Fal để lấy URL
         human_url = client.upload_file(person_local_path)
 
+        # 2. Gọi API với tham số CHUẨN tài liệu
         result = client.subscribe(
             "fal-ai/cat-vton",
             arguments={
-                "human_image_url": human_url,
-                "garment_image_url": garment_url,
-                "cloth_type": "upper",
-                "num_inference_steps": 25,
-                "guidance_scale": 7.0,
+                "human_image_url": human_url,      # ĐÚNG: human_image_url
+                "garment_image_url": garment_url,  # ĐÚNG: garment_image_url
+                "cloth_type": "upper",             # ĐÚNG: cloth_type (upper, lower, overall...)
+                "num_inference_steps": 30,         # Mặc định là 30
+                "guidance_scale": 2.5,             # Tài liệu mặc định là 2.5 (bạn có thể để 7.5 nếu muốn bám sát prompt)
             },
             with_logs=True
         )
-        return result["images"][0]["url"] if "images" in result else None
+
+        # 3. Lấy URL ảnh từ cấu trúc trả về CHUẨN
+        # Tài liệu: {"image": {"url": "..."}}
+        if result and "image" in result:
+            return result["image"]["url"]
+        return None
 
     except Exception as e:
-        st.error(f"Lỗi CAT-VTON: {str(e)}")
+        st.error(f"❌ Lỗi CAT-VTON: {str(e)}")
         return None
 
 

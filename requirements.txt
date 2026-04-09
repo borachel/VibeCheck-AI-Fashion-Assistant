@@ -1,4 +1,6 @@
 streamlit
-google-genai
+sqlite3
 Pillow
 requests
+google-generativeai
+fal-client

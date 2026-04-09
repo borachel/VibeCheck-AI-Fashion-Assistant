@@ -118,6 +118,9 @@ with st.sidebar:
     occasion_pref = st.selectbox("Dịp sử dụng", ["Đi làm", "Đi tiệc", "Đi chơi", "Đi hẹn hò"])
     user_img = st.file_uploader("Tải lên ảnh toàn thân", type=['jpg', 'jpeg', 'png'])
 
+if user_img and 'user_image_bytes' not in st.session_state:
+    st.session_state.user_image_bytes = user_img.getvalue()
+
 if user_img:
     if st.button("✨ Phân tích & Gợi ý", type="primary"):
         with st.spinner("Đang phân tích..."):

@@ -89,38 +89,27 @@ Trả về JSON: {{"body_shape": "...", "suggested_style": "...", "reason": "...
         return None
 
 
-def run_replicate_vton(person_image_path, garment_image_path):
-    """Sử dụng IDM-VTON trên Replicate"""
+def run_replicate_vton(person_local_path: str, garment_url: str):
     try:
-        # Gọi model yisol/idm-vton
-        # Chú ý: Đây là version ổn định nhất hiện nay
-        output = replicate.run(
-            "yisol/idm-vton:8006e897931818a7a8f828751525a417645f788e00127f80590c4270388d070b",
+        # Sử dụng client trực tiếp để tránh lỗi infer type
+        client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
+        
+        output = client.run(
+            "cuuupid/idm-vton:0513734a452173b8173e907e3a59d19a36266e55b48528559432bd21c7d7e985",
             input={
-                "crop": False,
-                "seed": 42,
-                "steps": 30,
-                "category": "upper_body", # upper_body, lower_body, dresses
-                "human_img": open(person_image_path, "rb"),
-                "garm_img": open(garment_image_path, "rb"),
-                "garment_des": "fashion item for VibeCheck Stylist"
+                "human_img": open(person_local_path, "rb"),
+                "garm_img": garment_url,
+                "garment_des": "fashion item"
             }
         )
         
-        # Output của Replicate thường là một list các URL ảnh hoặc trực tiếp URL
-        if isinstance(output, list):
-            return output[0]
-        return output
-
+        # Thử lấy URL từ output (Replicate đôi khi trả về đối tượng file hoặc link)
+        if hasattr(output, 'url'):
+            return output.url
+        return str(output)
     except Exception as e:
-        st.error(f"Lỗi Replicate: {e}")
+        st.error(f"Lỗi: {e}")
         return None
-
-import replicate
-import os
-
-# Đảm bảo bạn đã dán REPLICATE_API_TOKEN vào Secrets
-os.environ["REPLICATE_API_TOKEN"] = st.secrets["REPLICATE_API_TOKEN"]
 
 def run_replicate_vton(person_local_path: str, garment_url: str):
     """Sử dụng IDM-VTON bản cuuupid trên Replicate"""

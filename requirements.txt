@@ -1,6 +1,5 @@
 streamlit
-sqlite3
-Pillow
+pillow
 requests
 google-generativeai
-fal-client
+fal-client==0.4.2 

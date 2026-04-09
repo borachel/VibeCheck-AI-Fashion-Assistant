@@ -5,8 +5,8 @@ import tempfile
 import requests
 import json
 from PIL import Image
-import fal_client
 import google.generativeai as genai
+import fal_client       
 
 # ====================== CẤU HÌNH ======================
 st.set_page_config(page_title="VibeCheck: AI Stylist", layout="centered")

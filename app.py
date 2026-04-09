@@ -125,41 +125,50 @@ if user_img:
                         st.rerun()
 
 # ====================== THỬ ĐỒ ẢO ======================
+# ====================== THỬ ĐỒ ẢO (CAT-VTON) ======================
 if st.session_state.get('tryon_status') == 'processing' and 'tryon_item' in st.session_state:
     item = st.session_state['tryon_item']
     st.divider()
     st.subheader(f"🪞 Đang thử đồ: {item[0]}")
 
-    with st.spinner("Đang upload ảnh và xử lý thử đồ (10–18 giây)..."):
-        # Lưu ảnh tạm
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-            tmp.write(user_img.getvalue())
-            person_local_path = tmp.name
+    with st.spinner("Đang upload ảnh và tạo thử đồ CAT-VTON (10–20 giây)..."):
+        try:
+            # 1. Lưu ảnh người dùng
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                tmp.write(user_img.getvalue())
+                person_local_path = tmp.name
 
-        garment_url = item[2]
-        result_url = run_cat_vton(person_local_path, garment_url)
+            # 2. Upload ảnh lên Fal.ai để lấy URL
+            client = fal_client.SyncClient(api_key=FAL_API_KEY)
+            human_url = client.upload_file(person_local_path)
 
-        # Cleanup
-        if os.path.exists(person_local_path):
-            os.unlink(person_local_path)
+            garment_url = item[2]
 
-        if result_url:
-            st.session_state['tryon_result'] = result_url
-            st.session_state['tryon_status'] = 'success'
-        else:
+            # 3. Gọi CAT-VTON
+            result = client.subscribe(
+                "fal-ai/cat-vton",
+                arguments={
+                    "human_image_url": human_url,
+                    "garment_image_url": garment_url,
+                    "cloth_type": "upper",          # đổi thành "lower" nếu là váy/quần
+                    "num_inference_steps": 30,
+                    "guidance_scale": 7.5,
+                },
+                with_logs=True
+            )
+
+            # Cleanup
+            if os.path.exists(person_local_path):
+                os.unlink(person_local_path)
+
+            if result and "images" in result and len(result["images"]) > 0:
+                st.session_state['tryon_result'] = result["images"][0]["url"]
+                st.session_state['tryon_status'] = 'success'
+            else:
+                st.session_state['tryon_status'] = 'error'
+
+        except Exception as e:
+            st.error(f"❌ Lỗi CAT-VTON: {str(e)}")
             st.session_state['tryon_status'] = 'error'
-        st.rerun()
-
-if st.session_state.get('tryon_status') == 'success':
-    st.image(st.session_state['tryon_result'], use_column_width=True)
-    st.success("✅ Thử đồ thành công!")
-    if st.button("Thử sản phẩm khác"):
-        for k in ['tryon_item', 'tryon_status', 'tryon_result']:
-            st.session_state.pop(k, None)
-        st.rerun()
-
-if st.session_state.get('tryon_status') == 'error':
-    st.error("Không tạo được ảnh thử đồ. Vui lòng thử lại.")
-    if st.button("🔄 Thử lại"):
-        st.session_state['tryon_status'] = 'processing'
+        
         st.rerun()

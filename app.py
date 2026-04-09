@@ -255,9 +255,9 @@ if 'tryon_item' in st.session_state:
                 result = client.subscribe(
                     "fal-ai/cat-vton",
                     arguments={
-                        "human_image_url": person_url,      # Sửa tên từ human_image_url
+                        "human_image_url": person_url,      
                         "garment_image_url": garment_url,
-                        "category": "upper_body",            # Sửa từ cloth_type
+                        "cloth_type": "upper",           
                         "num_inference_steps": 30,
                         "guidance_scale": 7.5,
                     }

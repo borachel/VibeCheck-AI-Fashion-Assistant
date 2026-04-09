@@ -61,34 +61,84 @@ Trả về JSON: {{"body_shape": "...", "suggested_style": "...", "reason": "...
 
 
 def run_cat_vton(person_local_path: str, garment_url: str):
+    """Hàm CAT-VTON - Đã sửa để upload file đúng cách"""
     try:
         client = fal_client.SyncClient(api_key=FAL_API_KEY)
         
-        # 1. Upload ảnh người dùng lên Fal để lấy URL
+        # Upload ảnh người dùng lên Fal.ai để lấy URL công khai
         human_url = client.upload_file(person_local_path)
-
-        # 2. Gọi API với tham số CHUẨN tài liệu
+        
+        # Gọi CAT-VTON với tham số CHUẨN theo tài liệu fal-ai/cat-vton
         result = client.subscribe(
             "fal-ai/cat-vton",
             arguments={
-                "human_image_url": human_url,      # ĐÚNG: human_image_url
-                "garment_image_url": garment_url,  # ĐÚNG: garment_image_url
-                "cloth_type": "upper",             # ĐÚNG: cloth_type (upper, lower, overall...)
-                "num_inference_steps": 30,         # Mặc định là 30
-                "guidance_scale": 2.5,             # Tài liệu mặc định là 2.5 (bạn có thể để 7.5 nếu muốn bám sát prompt)
+                "human_image_url": human_url,      # ← Đúng tên tham số
+                "garment_image_url": garment_url,  # ← Đúng tên tham số
+                "cloth_type": "upper",             # upper / lower / overall
+                "num_inference_steps": 30,
+                "guidance_scale": 7.5,
             },
             with_logs=True
         )
-
-        # 3. Lấy URL ảnh từ cấu trúc trả về CHUẨN
-        # Tài liệu: {"image": {"url": "..."}}
+        
+        # Cấu trúc trả về thường là {"image": {"url": "..."}} hoặc {"images": [...]}
         if result and "image" in result:
             return result["image"]["url"]
-        return None
+        elif result and "images" in result and len(result["images"]) > 0:
+            return result["images"][0]["url"]
+        else:
+            st.error("Model không trả về ảnh hợp lệ")
+            return None
 
     except Exception as e:
         st.error(f"❌ Lỗi CAT-VTON: {str(e)}")
+        print(f"DEBUG CAT-VTON: {e}")
         return None
+
+
+# ====================== THỬ ĐỒ ẢO (CAT-VTON) ======================
+if 'tryon_item' in st.session_state:
+    item = st.session_state['tryon_item']
+    st.divider()
+   
+    if st.session_state.get('tryon_status') == 'processing':
+        st.subheader(f"🪞 Đang xử lý thử đồ: {item[0]}")
+        
+        with st.spinner("Đang upload ảnh và tạo thử đồ CAT-VTON (10–20 giây)..."):
+            try:
+                # Tạo file tạm từ ảnh người dùng upload
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                    tmp.write(user_img.getvalue())
+                    person_local_path = tmp.name
+                
+                # Gọi hàm run_cat_vton (đã sửa)
+                result_url = run_cat_vton(person_local_path, item[2])
+                
+                # Cleanup file tạm
+                if os.path.exists(person_local_path):
+                    os.unlink(person_local_path)
+                
+                if result_url:
+                    st.session_state['tryon_result'] = result_url
+                    st.session_state['tryon_status'] = 'success'
+                else:
+                    st.session_state['tryon_status'] = 'error'
+                    
+            except Exception as e:
+                st.error(f"❌ Lỗi khi xử lý thử đồ: {str(e)}")
+                st.session_state['tryon_status'] = 'error'
+            
+            st.rerun()
+
+    # Hiển thị kết quả khi thành công
+    if st.session_state.get('tryon_status') == 'success':
+        st.subheader("✨ Kết quả thử đồ của bạn")
+        st.image(st.session_state['tryon_result'], use_container_width=True, caption="VibeCheck: AI Stylist Result")
+        
+        if st.button("❌ Đóng phòng thử đồ"):
+            for key in ['tryon_item', 'tryon_status', 'tryon_result']:
+                st.session_state.pop(key, None)
+            st.rerun()
 
 
 # ====================== GIAO DIỆN ======================

@@ -124,51 +124,63 @@ if user_img:
                         st.session_state['tryon_status'] = 'processing'
                         st.rerun()
 
-# ====================== THỬ ĐỒ ẢO ======================
 # ====================== THỬ ĐỒ ẢO (CAT-VTON) ======================
-if st.session_state.get('tryon_status') == 'processing' and 'tryon_item' in st.session_state:
+if 'tryon_item' in st.session_state:
     item = st.session_state['tryon_item']
     st.divider()
-    st.subheader(f"🪞 Đang thử đồ: {item[0]}")
+    
+    # 1. Logic xử lý khi đang trong trạng thái 'processing'
+    if st.session_state.get('tryon_status') == 'processing':
+        st.subheader(f"🪞 Đang xử lý thử đồ: {item[0]}")
+        with st.spinner("Đang "mặc thử" sản phẩm (10–20 giây)..."):
+            try:
+                # Tạo file tạm cho ảnh người dùng
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                    tmp.write(user_img.getvalue())
+                    person_local_path = tmp.name
 
-    with st.spinner("Đang upload ảnh và tạo thử đồ CAT-VTON (10–20 giây)..."):
-        try:
-            # 1. Lưu ảnh người dùng
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-                tmp.write(user_img.getvalue())
-                person_local_path = tmp.name
+                client = fal_client.SyncClient(api_key=FAL_API_KEY)
+                
+                # Upload lên Fal lấy URL
+                person_url = client.upload_file(person_local_path)
+                garment_url = item[2] # URL ảnh sản phẩm từ DB
 
-            # 2. Upload ảnh lên Fal.ai để lấy URL
-            client = fal_client.SyncClient(api_key=FAL_API_KEY)
-            human_url = client.upload_file(person_local_path)
+                # Gọi CAT-VTON với tham số ĐÚNG
+                result = client.subscribe(
+                    "fal-ai/cat-vton",
+                    arguments={
+                        "person_image_url": person_url,      # Sửa tên từ human_image_url
+                        "garment_image_url": garment_url,
+                        "category": "upper_body",            # Sửa từ cloth_type
+                        "num_inference_steps": 30,
+                        "guidance_scale": 7.5,
+                    }
+                )
 
-            garment_url = item[2]
+                # Cleanup file tạm
+                if os.path.exists(person_local_path):
+                    os.unlink(person_local_path)
 
-            # 3. Gọi CAT-VTON
-            result = client.subscribe(
-                "fal-ai/cat-vton",
-                arguments={
-                    "human_image_url": human_url,
-                    "garment_image_url": garment_url,
-                    "cloth_type": "upper",          # đổi thành "lower" nếu là váy/quần
-                    "num_inference_steps": 30,
-                    "guidance_scale": 7.5,
-                },
-                with_logs=True
-            )
+                if result and "image" in result:
+                    # Lưu kết quả URL vào session
+                    st.session_state['tryon_result'] = result["image"]["url"]
+                    st.session_state['tryon_status'] = 'success'
+                else:
+                    st.session_state['tryon_status'] = 'error'
 
-            # Cleanup
-            if os.path.exists(person_local_path):
-                os.unlink(person_local_path)
-
-            if result and "images" in result and len(result["images"]) > 0:
-                st.session_state['tryon_result'] = result["images"][0]["url"]
-                st.session_state['tryon_status'] = 'success'
-            else:
+            except Exception as e:
+                st.error(f"❌ Lỗi CAT-VTON: {str(e)}")
                 st.session_state['tryon_status'] = 'error'
+            
+            st.rerun()
 
-        except Exception as e:
-            st.error(f"❌ Lỗi CAT-VTON: {str(e)}")
-            st.session_state['tryon_status'] = 'error'
+    # 2. Logic hiển thị khi đã có kết quả (success)
+    if st.session_state.get('tryon_status') == 'success':
+        st.subheader("✨ Kết quả thử đồ của bạn")
+        st.image(st.session_state['tryon_result'], use_container_width=True, caption="VibeCheck: AI Stylist Result")
         
-        st.rerun()
+        if st.button("❌ Đóng phòng thử đồ"):
+            del st.session_state['tryon_item']
+            del st.session_state['tryon_status']
+            del st.session_state['tryon_result']
+            st.rerun()

@@ -88,49 +88,26 @@ Trả về JSON: {{"body_shape": "...", "suggested_style": "...", "reason": "...
         st.error(f"Lỗi phân tích: {e}")
         return None
 
-
 def run_replicate_vton(person_local_path: str, garment_url: str):
     try:
-        # Sử dụng client trực tiếp để tránh lỗi infer type
+        import replicate
         client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
+        
+        # Upload ảnh lên server Replicate trước để lấy URL sạch
+        # Cách này giúp tránh lỗi Pydantic khi xử lý file binary cục bộ
+        person_file = open(person_local_path, "rb")
         
         output = client.run(
             "cuuupid/idm-vton:0513734a452173b8173e907e3a59d19a36266e55b48528559432bd21c7d7e985",
             input={
-                "human_img": open(person_local_path, "rb"),
+                "human_img": person_file,
                 "garm_img": garment_url,
                 "garment_des": "fashion item"
             }
         )
-        
-        # Thử lấy URL từ output (Replicate đôi khi trả về đối tượng file hoặc link)
-        if hasattr(output, 'url'):
-            return output.url
-        return str(output)
+        return output.url if hasattr(output, 'url') else str(output)
     except Exception as e:
         st.error(f"Lỗi: {e}")
-        return None
-
-def run_replicate_vton(person_local_path: str, garment_url: str):
-    """Sử dụng IDM-VTON bản cuuupid trên Replicate"""
-    try:
-        # Gọi model với ID chính xác từ tài liệu của bạn
-        output = replicate.run(
-            "cuuupid/idm-vton:0513734a452173b8173e907e3a59d19a36266e55b48528559432bd21c7d7e985",
-            input={
-                "human_img": open(person_local_path, "rb"),
-                "garm_img": garment_url, # Có thể truyền URL trực tiếp
-                "garment_des": "fashion item for VibeCheck Stylist"
-            }
-        )
-        
-        # Theo docs: output trả về một đối tượng có thuộc tính .url
-        if hasattr(output, 'url'):
-            return output.url
-        return str(output)
-
-    except Exception as e:
-        st.error(f"❌ Lỗi Replicate: {str(e)}")
         return None
 # ====================== GIAO DIỆN ======================
 st.title("👗 VibeCheck - CAT-VTON")

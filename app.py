@@ -9,11 +9,11 @@ import google.generativeai as genai
 import fal_client
 
 # ====================== CẤU HÌNH ======================
-FAL_API_KEY = st.secrets.get("FAL_API_KEY")
+FAL_KEY = st.secrets.get("FAL_KEY")
 GENAI_API_KEY = st.secrets.get("GENAI_API_KEY")
 
-if not FAL_API_KEY:
-    st.error("❌ Chưa thiết lập FAL_API_KEY trong Streamlit Secrets")
+if not FAL_KEY:
+    st.error("❌ Chưa thiết lập FAL_KEY trong Streamlit Secrets")
     st.stop()
 
 genai.configure(api_key=GENAI_API_KEY)

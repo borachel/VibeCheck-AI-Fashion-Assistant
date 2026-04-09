@@ -17,7 +17,7 @@ if not FAL_API_KEY or not GENAI_API_KEY:
 
 # Thiết lập API cho Gemini
 genai.configure(api_key=GENAI_API_KEY)
-gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+gemini_model = genai.GenerativeModel('gemini-2.5-flash')
 
 # Thiết lập môi trường cho Fal
 os.environ["FAL_KEY"] = FAL_API_KEY

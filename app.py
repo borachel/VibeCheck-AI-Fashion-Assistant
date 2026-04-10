@@ -96,7 +96,7 @@ Trả về JSON: {{"body_shape": "...", "suggested_style": "...", "reason": "...
 def run_cat_vton(person_local_path: str, garment_url: str):
     """Hàm CAT-VTON - Đã sửa để upload file đúng cách"""
     try:
-        client = fal_client.SyncClient(api_key=FAL_API_KEY)
+        client = fal_client.SyncClient(api_key=FAL_KEY)
         
         # Upload ảnh người dùng lên Fal.ai để lấy URL công khai
         human_url = client.upload_file(person_local_path)
@@ -245,7 +245,7 @@ if 'tryon_item' in st.session_state:
                     tmp.write(user_img.getvalue())
                     person_local_path = tmp.name
 
-                client = fal_client.SyncClient(api_key=FAL_API_KEY)
+                client = fal_client.SyncClient(api_key=FAL_KEY)
                 
                 # Upload lên Fal lấy URL
                 person_url = client.upload_file(person_local_path)

@@ -11,6 +11,7 @@ import fal_client
 # ====================== CẤU HÌNH ======================
 FAL_KEY = st.secrets.get("FAL_KEY")
 GENAI_API_KEY = st.secrets.get("GENAI_API_KEY")
+os.environ["FAL_KEY"] = FAL_KEY
 
 if not FAL_KEY:
     st.error("❌ Chưa thiết lập FAL_KEY trong Streamlit Secrets")
@@ -96,7 +97,7 @@ Trả về JSON: {{"body_shape": "...", "suggested_style": "...", "reason": "...
 def run_cat_vton(person_local_path: str, garment_url: str):
     """Hàm CAT-VTON - Đã sửa để upload file đúng cách"""
     try:
-        client = fal_client.SyncClient(api_key=FAL_KEY)
+        client = fal_client.SyncClient()
         
         # Upload ảnh người dùng lên Fal.ai để lấy URL công khai
         human_url = client.upload_file(person_local_path)
@@ -135,23 +136,12 @@ with st.sidebar:
     st.header("Thông tin của bạn")
     gender = st.radio("Giới tính", ["Nam", "Nữ"], horizontal=True)
     occasion_pref = st.selectbox("Dịp sử dụng", ["Đi làm", "Đi tiệc", "Đi chơi", "Đi hẹn hò"])
-    
-    uploaded_file = st.file_uploader("Tải lên ảnh toàn thân", type=['jpg', 'jpeg', 'png'])
-    
-    # === LƯU ẢNH VÀO SESSION STATE NGAY TỪ ĐẦU ===
-    if uploaded_file is not None:
-        if 'user_image_bytes' not in st.session_state:
-            st.session_state.user_image_bytes = uploaded_file.getvalue()
-            st.session_state.user_image_name = uploaded_file.name
-        st.image(uploaded_file, width=200, caption="Ảnh của bạn")
+    user_img = st.file_uploader("Tải lên ảnh toàn thân", type=['jpg', 'jpeg', 'png'])
 
-# Gán lại để dùng sau
-user_img_bytes = st.session_state.get('user_image_bytes')
-
-if uploaded_file:
+if user_img:
     if st.button("✨ Phân tích & Gợi ý", type="primary"):
         with st.spinner("Đang phân tích..."):
-            analysis = analyze_user_all_in_one(uploaded_file, gender, occasion_pref)
+            analysis = analyze_user_all_in_one(user_img, gender, occasion_pref)
             if analysis:
                 st.session_state['analysis'] = analysis
                 st.session_state['product_recs'] = get_recommendations(
@@ -175,29 +165,27 @@ if uploaded_file:
                 with col2:
                     st.write(f"**{name}**")
                     st.write(f"Giá: **{price}** VNĐ")
-                    if st.button("🪞 Thử đồ ảo", key=f"try_{item_id}"):
-                        if 'user_image_bytes' not in st.session_state:
-                            st.error("Vui lòng tải lên ảnh toàn thân trước!")
-                            st.stop()
-    
+                    if st.button("🪞 Thử đồ CAT-VTON", key=f"try_{item_id}"):
                         st.session_state['tryon_item'] = item
                         st.session_state['tryon_status'] = 'processing'
                         st.rerun()
 
 # ====================== THỬ ĐỒ ẢO (CAT-VTON) ======================
 if st.session_state.get('tryon_status') == 'processing' and 'tryon_item' in st.session_state:
+
     item = st.session_state['tryon_item']
     
     st.divider()
     st.subheader(f"🪞 Đang thử đồ: {item[0]}")
-    
-    with st.spinner("Đang xử lý thử đồ ảo (10–20 giây)..."):
+
+    with st.spinner("Đang upload ảnh và xử lý thử đồ CAT-VTON (10–20 giây)..."):
         try:
-            # Tạo file tạm từ bytes đã lưu
+            # Tạo file tạm từ ảnh người dùng
             with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-                tmp.write(st.session_state.user_image_bytes)
+                tmp.write(user_img.getvalue())
                 person_local_path = tmp.name
 
+            # Gọi hàm CAT-VTON
             result_url = run_cat_vton(person_local_path, item[2])
 
             # Xóa file tạm
@@ -213,8 +201,8 @@ if st.session_state.get('tryon_status') == 'processing' and 'tryon_item' in st.s
         except Exception as e:
             st.error(f"❌ Lỗi khi thử đồ: {str(e)}")
             st.session_state['tryon_status'] = 'error'
-        
-        st.rerun()   # rerun để hiển thị kết quả
+
+        st.rerun()
 
 
 # Hiển thị kết quả khi thành công

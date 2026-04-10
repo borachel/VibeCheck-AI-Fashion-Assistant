@@ -128,67 +128,6 @@ def run_cat_vton(person_local_path: str, garment_url: str):
         print(f"DEBUG CAT-VTON: {e}")
         return None
 
-
-# ====================== THỬ ĐỒ ẢO (CAT-VTON) ======================
-if st.session_state.get('tryon_status') == 'processing' and 'tryon_item' in st.session_state:
-    item = st.session_state['tryon_item']
-    
-    st.divider()
-    st.subheader(f"🪞 Đang thử đồ: {item[0]}")
-
-    with st.spinner("Đang upload ảnh và xử lý thử đồ CAT-VTON (10–20 giây)..."):
-        try:
-            # Tạo file tạm từ ảnh người dùng
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-                tmp.write(user_img.getvalue())
-                person_local_path = tmp.name
-
-            # Gọi hàm CAT-VTON
-            result_url = run_cat_vton(person_local_path, item[2])
-
-            # Xóa file tạm
-            if os.path.exists(person_local_path):
-                os.unlink(person_local_path)
-
-            if result_url:
-                st.session_state['tryon_result'] = result_url
-                st.session_state['tryon_status'] = 'success'
-            else:
-                st.session_state['tryon_status'] = 'error'
-
-        except Exception as e:
-            st.error(f"❌ Lỗi khi thử đồ: {str(e)}")
-            st.session_state['tryon_status'] = 'error'
-
-        st.rerun()
-
-
-# Hiển thị kết quả khi thành công
-if st.session_state.get('tryon_status') == 'success' and 'tryon_result' in st.session_state:
-    st.divider()
-    st.subheader("✨ Kết quả thử đồ")
-    st.image(st.session_state['tryon_result'], use_container_width=True, caption="Kết quả CAT-VTON")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Thử sản phẩm khác"):
-            for key in ['tryon_item', 'tryon_status', 'tryon_result']:
-                st.session_state.pop(key, None)
-            st.rerun()
-    with col2:
-        if st.button("Đóng"):
-            for key in ['tryon_item', 'tryon_status', 'tryon_result']:
-                st.session_state.pop(key, None)
-            st.rerun()
-
-
-# Hiển thị lỗi
-if st.session_state.get('tryon_status') == 'error':
-    st.error("❌ Không tạo được ảnh thử đồ. Vui lòng thử lại.")
-    if st.button("🔄 Thử lại"):
-        st.session_state['tryon_status'] = 'processing'
-        st.rerun()
-
 # ====================== GIAO DIỆN ======================
 st.title("👗 VibeCheck - CAT-VTON")
 

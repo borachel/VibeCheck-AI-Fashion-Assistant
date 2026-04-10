@@ -148,10 +148,10 @@ with st.sidebar:
 # Gán lại để dùng sau
 user_img_bytes = st.session_state.get('user_image_bytes')
 
-if user_img:
+if uploaded_file:
     if st.button("✨ Phân tích & Gợi ý", type="primary"):
         with st.spinner("Đang phân tích..."):
-            analysis = analyze_user_all_in_one(user_img, gender, occasion_pref)
+            analysis = analyze_user_all_in_one(uploaded_file, gender, occasion_pref)
             if analysis:
                 st.session_state['analysis'] = analysis
                 st.session_state['product_recs'] = get_recommendations(
